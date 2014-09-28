@@ -195,6 +195,22 @@ static bool ResolveExternalCmd(commandT* cmd)
 
 static void Exec(commandT* cmd, bool forceFork)
 {
+  pid_t pid;
+  pid = fork();
+
+
+  if(pid <0) {    /* error occurred */
+    fprintf(stderr, "Fork Failed");
+  }
+  else if(pid == 0) {   // Child process
+    printf("here pid is 0");
+    printf("cmd is : %s, ", cmd->argv[0]);
+    execvp(cmd->argv[0], cmd->argv);
+  }
+  else {
+    wait(NULL);
+  }
+
 }
 
 static bool IsBuiltIn(char* cmd)

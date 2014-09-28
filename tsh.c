@@ -34,6 +34,8 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <string.h>
+#include <stdio.h>
+#include <unistd.h>
 
 /************Private include**********************************************/
 #include "tsh.h"
@@ -71,6 +73,8 @@ int main (int argc, char *argv[])
 
   while (!forceExit) /* repeat forever */
   {
+    printf("%s> ", SHELLNAME);
+    fflush(stdout);
     /* read command line */
     getCommandLine(&cmdLine, BUFSIZE);
 
@@ -87,6 +91,8 @@ int main (int argc, char *argv[])
      * includes executing of commands */
     Interpret(cmdLine);
 
+//    printf("%s\n", cmdLine);
+    
   }
 
   /* shell termination */
@@ -96,5 +102,7 @@ int main (int argc, char *argv[])
 
 static void sig(int signo)
 {
+  printf("\nsigno is %d", signo);
+  fflush(stdout);
 }
 
