@@ -119,6 +119,7 @@ void RunCmdFork(commandT* cmd, bool fork)
 void RunCmdBg(commandT* cmd)
 {
   // TODO
+  // add &
 }
 
 void RunCmdPipe(commandT* cmd1, commandT* cmd2)
