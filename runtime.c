@@ -196,6 +196,7 @@ static bool ResolveExternalCmd(commandT* cmd)
 
 static void Exec(commandT* cmd, bool forceFork)
 {
+  printf("\ncmd.name: %s\n", cmd->name);
   pid_t pid;
   pid = fork();
 
@@ -204,9 +205,8 @@ static void Exec(commandT* cmd, bool forceFork)
     fprintf(stderr, "Fork Failed");
   }
   else if(pid == 0) {   // Child process
-    printf("here pid is 0");
-    printf("cmd is : %s, ", cmd->argv[0]);
-    execvp(cmd->argv[0], cmd->argv);
+    execv(cmd->name, cmd->argv);
+
   }
   else {
     wait(NULL);
