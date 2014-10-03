@@ -35,7 +35,6 @@
  *
  ***************************************************************************/
 #define __RUNTIME_IMPL__
-
 /************System include***********************************************/
 #include <assert.h>
 #include <errno.h>
@@ -52,6 +51,7 @@
 /************Private include**********************************************/
 #include "runtime.h"
 #include "io.h"
+#include "tsh.h"
 
 /************Defines and Typedefs*****************************************/
 /*  #defines and typedefs should have their names in all caps.
@@ -116,10 +116,18 @@ void RunCmdFork(commandT* cmd, bool fork)
   }
 }
 
-void RunCmdBg(commandT* cmd)
+void RunCmdFg(commandT* cmd, pid_t pgid)
 {
-  // TODO
-  // add &
+  tcsetpgrp(shell_terminal, pgid);
+  
+  wait_for_cmd(cmd);
+
+  tcsetpgrp(shell_terminal, shell_pgid);
+
+}
+void RunCmdBg(commandT* cmd, pid_t pgid)
+{
+
 }
 
 void RunCmdPipe(commandT* cmd1, commandT* cmd2)
@@ -197,20 +205,31 @@ static bool ResolveExternalCmd(commandT* cmd)
 static void Exec(commandT* cmd, bool forceFork)
 {
   printf("\ncmd.name: %s\n", cmd->name);
-  pid_t pid;
+  printf("bg: %d\n", cmd->bg);
+  pid_t pid,pid1;               // pid1 is parent pid.
+  pid1 = getpid();
   pid = fork();
+  int status;
 
 
   if(pid <0) {    /* error occurred */
     fprintf(stderr, "Fork Failed");
   }
   else if(pid == 0) {   // Child process
-    execv(cmd->name, cmd->argv);
-
+//    execv(cmd->name, cmd->argv);
+      launch_process(cmd, pid1);    
   }
   else {
-    wait(NULL);
+    
+      
   }
+
+  if(!shell_is_interactive)
+    wait_for_cmd(cmd);
+  else if(cmd->bg)
+    RunCmdBg(cmd, pid1);
+  else
+    RunCmdFg(cmd, pid1);
 
 }
 
@@ -254,3 +273,46 @@ void ReleaseCmdT(commandT **cmd){
     if((*cmd)->argv[i] != NULL) free((*cmd)->argv[i]);
   free(*cmd);
 }
+
+void launch_process(commandT *cmd, pid_t pgid) {
+  pid_t pid;
+  pid = getpid();
+  if(pgid == 0) pgid = pid;
+  setpgid(pid, pgid);
+  if(!cmd->bg) {
+    tcsetpgrp(shell_terminal, pgid);
+  }
+  else {}
+    
+  
+  signal(SIGINT, SIG_DFL);
+  signal(SIGQUIT, SIG_DFL);
+  signal(SIGTSTP, SIG_DFL);
+  signal(SIGTTIN, SIG_DFL);
+  signal(SIGTTOU, SIG_DFL);
+  signal(SIGCHLD, SIG_DFL);
+
+  execv(cmd->name, cmd->argv);
+  perror("execv");
+  exit(1);
+}
+
+void wait_for_cmd(commandT* cmd)
+{
+  int status;
+  pid_t pid;
+
+//  do
+    pid = waitpid (WAIT_ANY, &status, WUNTRACED);
+//  while (!mark_process_status(pid, status)
+//          && !job_is_stopped(cmd)
+//          && !job_is_completed(cmd));
+}
+
+int mark_process_status (pid_t pid, int status) 
+{
+  //TODO
+  return 0;
+}
+
+

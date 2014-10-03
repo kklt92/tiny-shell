@@ -91,7 +91,7 @@ EXTERN void RunCmd(commandT**,int);
  *    Input: a command structure
  *    Output: void
  ***********************************************************************/
-EXTERN void RunCmdBg(commandT*);
+EXTERN void RunCmdBg(commandT*, pid_t);
 
 /***********************************************************************
  *  Title: Runs two command with a pipe
@@ -174,6 +174,7 @@ EXTERN char* getLogin();
  ***********************************************************************/
 EXTERN void CheckJobs();
 
+EXTERN void wait_for_cmd(commandT*);
 /************External Declaration*****************************************/
 
 /**************Definition***************************************************/

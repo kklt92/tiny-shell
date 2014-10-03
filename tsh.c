@@ -36,6 +36,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <termios.h>
 
 /************Private include**********************************************/
 #include "tsh.h"
@@ -53,6 +54,10 @@
 #define BUFSIZE 80
 
 /************Global Variables*********************************************/
+pid_t shell_pgid;
+struct termios shell_tmodes;
+int shell_terminal;
+int shell_is_interactive;
 
 /************Function Prototypes******************************************/
 /* handles SIGINT and SIGSTOP signals */	
@@ -67,9 +72,26 @@ int main (int argc, char *argv[])
   /* Initialize command buffer */
   char* cmdLine = malloc(sizeof(char*)*BUFSIZE);
 
+  shell_terminal = STDIN_FILENO;
+  shell_is_interactive = isatty(shell_terminal);
+
+
+  printf("shell_terminal: %d\n", shell_terminal);
+  printf("shell_is_interactive: %d\n", shell_is_interactive);
   /* shell initialization */
   if (signal(SIGINT, sig) == SIG_ERR) PrintPError("SIGINT");
   if (signal(SIGTSTP, sig) == SIG_ERR) PrintPError("SIGTSTP");
+
+  shell_pgid = getpid();
+  if(setpgid(shell_pgid, shell_pgid) < 0)
+  {
+    PrintPError("Couldn't put the shell in its own process group");
+    exit(1);
+  }
+
+  tcsetpgrp(shell_terminal, shell_pgid);
+  tcgetattr(shell_terminal, &shell_tmodes);
+  printf("shell_termnial now is: %d, the shell_pgid is: %d\n", shell_terminal, shell_pgid); 
 
   while (!forceExit) /* repeat forever */
   {
