@@ -91,7 +91,7 @@ EXTERN void RunCmd(commandT**,int);
  *    Input: a command structure
  *    Output: void
  ***********************************************************************/
-EXTERN void RunCmdBg(commandT*, pid_t);
+EXTERN void RunCmdBg(commandT*, pid_t, pid_t);
 
 /***********************************************************************
  *  Title: Runs two command with a pipe

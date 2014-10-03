@@ -125,9 +125,10 @@ void RunCmdFg(commandT* cmd, pid_t pgid)
   tcsetpgrp(shell_terminal, shell_pgid);
 
 }
-void RunCmdBg(commandT* cmd, pid_t pgid)
+void RunCmdBg(commandT* cmd, pid_t pgid, pid_t pid)
 {
-
+   bgjobs->pid = pid; 
+   printf("bgjobs->pid: %d\n", bgjobs->pid);
 }
 
 void RunCmdPipe(commandT* cmd1, commandT* cmd2)
@@ -204,8 +205,6 @@ static bool ResolveExternalCmd(commandT* cmd)
 
 static void Exec(commandT* cmd, bool forceFork)
 {
-  printf("\ncmd.name: %s\n", cmd->name);
-  printf("bg: %d\n", cmd->bg);
   pid_t pid,pid1;               // pid1 is parent pid.
   pid1 = getpid();
   pid = fork();
@@ -227,7 +226,7 @@ static void Exec(commandT* cmd, bool forceFork)
   if(!shell_is_interactive)
     wait_for_cmd(cmd);
   else if(cmd->bg)
-    RunCmdBg(cmd, pid1);
+    RunCmdBg(cmd, pid1, pid);
   else
     RunCmdFg(cmd, pid1);
 
@@ -235,13 +234,31 @@ static void Exec(commandT* cmd, bool forceFork)
 
 static bool IsBuiltIn(char* cmd)
 {
-  return FALSE;     
+  if(strcmp(cmd, "bg") == 0) 
+    return TRUE;
+
+  else if(strcmp(cmd, "jobs") == 0) return TRUE;
+  else if(strcmp(cmd, "fg") == 0) return TRUE;
+  else if(strcmp(cmd, "cd") == 0) return TRUE;
+  else {
+    return FALSE;     
+  }
 }
 
 
 static void RunBuiltInCmd(commandT* cmd)
 {
+  if(strcmp(cmd->argv[0], "bg") == 0) {
+        int i = 0;
+//        while(bgjobs[i] != NULL) {
+          printf("[%d]+ %d\n", i+1, i);
+          i++;
+//        } 
+   }
+          
 }
+
+
 
 void CheckJobs()
 {
