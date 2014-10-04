@@ -66,6 +66,7 @@
 
 typedef struct bgjob_l {
   pid_t pid;
+  char* cmdline;
   struct bgjob_l* next;
 } bgjobL;
 
@@ -140,14 +141,32 @@ void RunCmdBg(commandT* cmd, pid_t pgid, pid_t pid)
   printf("&bgjobs: %x, &bgjobs->pid: %x, &b->pid: %x,  &b: %x, b2: \n", &bgjobs, &bgjobs->pid, &b->pid,  &b);
   
   int i=0;
-  for(b = bgjobs; b; b = bnext) {
-    bnext = b->next;
-    i++;
+  if(bgjobs != NULL) {
+//    for(b = bgjobs; b; b = b->next) {
+//      bnext = b->next;
+//      blast = b;
+//      i++;
+//      printf("bnext: %x, blast: %x, i: %d\n", &bnext, &blast, i);
+//    }
+    printf("before b declare");
+    b = bgjobs;
+    printf("before while");
+    while(b != NULL) {
+      b = b->next;
+      printf("b: %x", b);
+    }
+    
+    bnext->pid = pid;
+    b->next = bnext;
+
+    
   }
-  bnext->pid = pid;
-  bgjobs = bnext;
+  else {
+    b->pid = pid;
+    bgjobs = b;
+  }
 //  b1->next = b;
-  printf("i: %d, &b->next: %x, &bgjobs->next: %x, &bnext: %x, bnext->pid: %d\n",i, &(b->next), &(bgjobs->next), &bnext, bnext->pid );
+//  printf("i: %d, &b->next: %x, &bgjobs->next: %x, &bnext: %x, bnext->pid: %d\n",i, &(b->next), &(bgjobs->next), &bnext, bnext->pid );
 }
 
 void RunCmdPipe(commandT* cmd1, commandT* cmd2)
