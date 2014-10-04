@@ -47,7 +47,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <signal.h>
-
+#include <termios.h>
 /************Private include**********************************************/
 #include "runtime.h"
 #include "io.h"
@@ -71,7 +71,6 @@ typedef struct bgjob_l {
 
 /* the pids of the background processes */
 bgjobL *bgjobs = NULL;
-
 /************Function Prototypes******************************************/
 /* run command */
 static void RunCmdFork(commandT*, bool);
@@ -124,11 +123,31 @@ void RunCmdFg(commandT* cmd, pid_t pgid)
 
   tcsetpgrp(shell_terminal, shell_pgid);
 
+  tcsetattr(shell_terminal, TCSADRAIN, &shell_tmodes);
+
 }
 void RunCmdBg(commandT* cmd, pid_t pgid, pid_t pid)
 {
-   bgjobs->pid = pid; 
-   printf("bgjobs->pid: %d\n", bgjobs->pid);
+  bgjobL *b, *blast, *bnext;
+
+//  b->pid = pid; 
+  
+//  bgjobs->next = b2;
+  
+//  b2->next = b3;
+//  b3->next = b4;
+//  b4->next = b5;
+  printf("&bgjobs: %x, &bgjobs->pid: %x, &b->pid: %x,  &b: %x, b2: \n", &bgjobs, &bgjobs->pid, &b->pid,  &b);
+  
+  int i=0;
+  for(b = bgjobs; b; b = bnext) {
+    bnext = b->next;
+    i++;
+  }
+  bnext->pid = pid;
+  bgjobs = bnext;
+//  b1->next = b;
+  printf("i: %d, &b->next: %x, &bgjobs->next: %x, &bnext: %x, bnext->pid: %d\n",i, &(b->next), &(bgjobs->next), &bnext, bnext->pid );
 }
 
 void RunCmdPipe(commandT* cmd1, commandT* cmd2)
@@ -205,6 +224,7 @@ static bool ResolveExternalCmd(commandT* cmd)
 
 static void Exec(commandT* cmd, bool forceFork)
 {
+  printf("before fork, cmd->bg: %d\n", cmd->bg);
   pid_t pid,pid1;               // pid1 is parent pid.
   pid1 = getpid();
   pid = fork();
@@ -225,7 +245,7 @@ static void Exec(commandT* cmd, bool forceFork)
 
   if(!shell_is_interactive)
     wait_for_cmd(cmd);
-  else if(cmd->bg)
+  if(cmd->bg)
     RunCmdBg(cmd, pid1, pid);
   else
     RunCmdFg(cmd, pid1);
@@ -248,20 +268,26 @@ static bool IsBuiltIn(char* cmd)
 
 static void RunBuiltInCmd(commandT* cmd)
 {
+  bgjobL *b;
   if(strcmp(cmd->argv[0], "bg") == 0) {
-        int i = 0;
-//        while(bgjobs[i] != NULL) {
-          printf("[%d]+ %d\n", i+1, i);
+    if(bgjobs != NULL){
+      int i=1;
+      for(b = bgjobs; b; b = b->next) {
+          printf("[%d]+ %d\n", i, b->pid );
           i++;
-//        } 
+      }
+    }
+    else {
+      printf("-tsh: bg: curren: no such job\n");
    }
-          
+  }      
 }
 
 
 
 void CheckJobs()
 {
+  fflush(stdout);
 }
 
 

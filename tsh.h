@@ -46,6 +46,7 @@
 
 /************Global Variables*********************************************/
 extern pid_t shell_pgid;
+extern struct termios shell_tmodes;
 extern int shell_terminal;
 extern int shell_is_interactive;
 /***********Function Prototypes******************************************/
