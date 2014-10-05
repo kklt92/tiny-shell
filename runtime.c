@@ -66,7 +66,7 @@
 
 typedef struct bgjob_l {
   pid_t pid;
-  char* cmdline;
+//  char* cmdline;
   struct bgjob_l* next;
 } bgjobL;
 
@@ -129,44 +129,7 @@ void RunCmdFg(commandT* cmd, pid_t pgid)
 }
 void RunCmdBg(commandT* cmd, pid_t pgid, pid_t pid)
 {
-  bgjobL *b, *blast, *bnext;
-
-//  b->pid = pid; 
-  
-//  bgjobs->next = b2;
-  
-//  b2->next = b3;
-//  b3->next = b4;
-//  b4->next = b5;
-  printf("&bgjobs: %x, &bgjobs->pid: %x, &b->pid: %x,  &b: %x, b2: \n", &bgjobs, &bgjobs->pid, &b->pid,  &b);
-  
-  int i=0;
-  if(bgjobs != NULL) {
-//    for(b = bgjobs; b; b = b->next) {
-//      bnext = b->next;
-//      blast = b;
-//      i++;
-//      printf("bnext: %x, blast: %x, i: %d\n", &bnext, &blast, i);
-//    }
-    printf("before b declare");
-    b = bgjobs;
-    printf("before while");
-    while(b != NULL) {
-      b = b->next;
-      printf("b: %x", b);
-    }
-    
-    bnext->pid = pid;
-    b->next = bnext;
-
-    
-  }
-  else {
-    b->pid = pid;
-    bgjobs = b;
-  }
-//  b1->next = b;
-//  printf("i: %d, &b->next: %x, &bgjobs->next: %x, &bnext: %x, bnext->pid: %d\n",i, &(b->next), &(bgjobs->next), &bnext, bnext->pid );
+  append(&bgjobs, pid);
 }
 
 void RunCmdPipe(commandT* cmd1, commandT* cmd2)
@@ -269,6 +232,7 @@ static void Exec(commandT* cmd, bool forceFork)
   else
     RunCmdFg(cmd, pid1);
 
+  printf("RunCmdBg/Fg correct\n");
 }
 
 static bool IsBuiltIn(char* cmd)
@@ -377,4 +341,38 @@ int mark_process_status (pid_t pid, int status)
   return 0;
 }
 
+int length(bgjobL *head) {
+  int count=0;
+  bgjobL *current = head;
+
+  while(current != NULL) {
+    count++;
+    current = current->next;
+  }
+  return(count);
+}
+
+void append(bgjobL **headRef, pid_t pid) {
+  bgjobL *current = *headRef;
+  bgjobL *newNode = NULL;
+
+  printf("current: %x\n", current);
+  newNode = malloc(sizeof(bgjobL));
+  newNode->pid = pid;
+//  newNode->cmdline = cmd;
+  newNode->next = NULL;
+
+  printf("newNode->pid: %d, newNode->next: %x\n", newNode->pid, newNode->next);
+  if(current == NULL) {
+    printf("current is NULL\n");
+    *headRef = newNode;
+  }
+  else {
+    printf("current is not NULL\n");
+    while(current->next != NULL) {
+      current = current->next;
+    }
+    current->next = newNode;
+  }
+}
 
