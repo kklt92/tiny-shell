@@ -64,11 +64,22 @@
 
 #define NBUILTINCOMMANDS (sizeof BuiltInCommands / sizeof(char*))
 
-typedef struct bgjob_l {
+typedef struct process {
+  struct process *next;
   pid_t pid;
-//  char* cmdline;
+  char completed;
+  char stopped;
+  int status;
+} process;
+
+
+typedef struct bgjob_l {
+  pid_t pgid;
+  char* cmdline;
+  process *first_process;
   struct bgjob_l* next;
 } bgjobL;
+
 
 /* the pids of the background processes */
 bgjobL *bgjobs = NULL;
@@ -129,7 +140,10 @@ void RunCmdFg(commandT* cmd, pid_t pgid)
 }
 void RunCmdBg(commandT* cmd, pid_t pgid, pid_t pid)
 {
-  append(&bgjobs, pid);
+  int i = 0;
+  append(&bgjobs, pid, cmd->cmdline);
+  i = length(bgjobs);
+  printf("[%d] %d\n", i, pid);
 }
 
 void RunCmdPipe(commandT* cmd1, commandT* cmd2)
@@ -206,7 +220,6 @@ static bool ResolveExternalCmd(commandT* cmd)
 
 static void Exec(commandT* cmd, bool forceFork)
 {
-  printf("before fork, cmd->bg: %d\n", cmd->bg);
   pid_t pid,pid1;               // pid1 is parent pid.
   pid1 = getpid();
   pid = fork();
@@ -229,10 +242,10 @@ static void Exec(commandT* cmd, bool forceFork)
     wait_for_cmd(cmd);
   if(cmd->bg)
     RunCmdBg(cmd, pid1, pid);
-  else
+  else {
+    wait(NULL);
     RunCmdFg(cmd, pid1);
-
-  printf("RunCmdBg/Fg correct\n");
+  }
 }
 
 static bool IsBuiltIn(char* cmd)
@@ -256,14 +269,31 @@ static void RunBuiltInCmd(commandT* cmd)
     if(bgjobs != NULL){
       int i=1;
       for(b = bgjobs; b; b = b->next) {
-          printf("[%d]+ %d\n", i, b->pid );
+          printf("[%d]+ %s &\n", i, b->cmdline );
           i++;
       }
     }
     else {
-      printf("-tsh: bg: curren: no such job\n");
+      printf("-tsh: bg: current: no such job\n");
    }
   }      
+  else if(strcmp(cmd->argv[0], "jobs") == 0) {
+    int i=0;
+    char status[] = "Stopped";
+    bgjobL *current = NULL;
+    if(bgjobs != NULL) {
+      current = bgjobs;
+      while(current != NULL) {
+        i++;
+        printf("[%d]\t%s\t\t\t\t%s\n", i, status, current->cmdline); 
+      current = current->next;
+      }
+    }
+  }
+  else if(strcmp(cmd->argv[0], "fg") == 0) {
+  }
+  else if(strcmp(cmd->argv[0], "cd") == 0) {
+  }
 }
 
 
@@ -271,7 +301,37 @@ static void RunBuiltInCmd(commandT* cmd)
 void CheckJobs()
 {
   fflush(stdout);
+  bgjobL *j, *jlast, *jnext;
+  process *p;
+
+  update_status();
+
+  j = bgjobs;
+  jlast = NULL;
+  while(j != NULL) {
+    jnext = j->next;
+
+    if(job_is_completed(j)) {
+      format_job_infor(j, "Done");
+      if(jlast)
+        jlast->next = jnext;
+      else
+        bgjobs = jnext;
+      free_job(&j);
+    }
+
+    else if(job_is_stopped (j)) {
+      format_job_infor(j, "Stopped");
+      jlast = j;
+    }
+    
+    else
+      jlast = j;
+    j = jnext;
+  }
 }
+
+
 
 
 commandT* CreateCmdT(int n)
@@ -300,24 +360,42 @@ void ReleaseCmdT(commandT **cmd){
   free(*cmd);
 }
 
-void launch_process(commandT *cmd, pid_t pgid) {
+void launch_process(commandT *cmd, pid_t pgid, int infile, int outfile, int errfile) {
   pid_t pid;
-  pid = getpid();
-  if(pgid == 0) pgid = pid;
-  setpgid(pid, pgid);
-  if(!cmd->bg) {
-    tcsetpgrp(shell_terminal, pgid);
-  }
-  else {}
-    
-  
-  signal(SIGINT, SIG_DFL);
-  signal(SIGQUIT, SIG_DFL);
-  signal(SIGTSTP, SIG_DFL);
-  signal(SIGTTIN, SIG_DFL);
-  signal(SIGTTOU, SIG_DFL);
-  signal(SIGCHLD, SIG_DFL);
 
+  if(shell_is_interactive) {
+    pid = getpid();
+    if(pgid == 0) pgid = pid;
+    setpgid(pid, pgid);
+    if(!cmd->bg) {
+      tcsetpgrp(shell_terminal, pgid);
+    }
+    else {}
+      
+    
+    signal(SIGINT, SIG_DFL);
+    signal(SIGQUIT, SIG_DFL);
+    signal(SIGTSTP, SIG_DFL);
+    signal(SIGTTIN, SIG_DFL);
+    signal(SIGTTOU, SIG_DFL);
+    signal(SIGCHLD, SIG_DFL);
+  }
+//  printf("cmd->name: %s\n", cmd->name);
+
+  if(infile != STDIN_FILENO) {
+    dup2(infile, STDIN_FILENO);
+    close(infile);
+  }
+  if(outfile != STDOUT_FILENO) {
+    dup2(outfile, STDOUT_FILENO);
+    close(outfile);
+  }
+  if(errfile != STDERR_FILENO) {
+    dup2(errfile, STDERR_FILENO);
+    close(errfile);
+  }
+
+//  printf("cmd->name: %s, cmd->argv: %s\n", cmd->name, *(cmd->argv));
   execv(cmd->name, cmd->argv);
   perror("execv");
   exit(1);
@@ -328,17 +406,55 @@ void wait_for_cmd(commandT* cmd)
   int status;
   pid_t pid;
 
-//  do
+  do
     pid = waitpid (WAIT_ANY, &status, WUNTRACED);
-//  while (!mark_process_status(pid, status)
-//          && !job_is_stopped(cmd)
-//          && !job_is_completed(cmd));
+  while (!mark_process_status(pid, status)
+          && !job_is_stopped(cmd)
+          && !job_is_completed(cmd));
 }
 
 int mark_process_status (pid_t pid, int status) 
 {
-  //TODO
-  return 0;
+  bgjobL *j;
+  process *p;
+  if(pid>0) {
+    j = bgjobs;
+    while(j != NULL) {
+      p = j->first_process;
+      while(p != NULL) {
+        if(p->pid == pid) {
+          p->status = status;
+          if(WIFSTOPPED(status))
+            p->stopped = 1;
+          else {
+            p->completed = 1;
+            if(WIFSIGNALED(status))
+              fprintf(stderr, "%d: Terminated by signal %d.\n", (int)pid, WTERMSIG(p->status));
+          }
+          return 0;
+        }
+        p = p->next;
+      }
+      j = j->next;
+    }
+//    fprintf(stderr, "No child process %d.\n", pid);
+    return -1;
+  }
+  else if(pid == 0||errno == ECHILD)
+    return -1;
+  else {
+    perror("waitpid");
+    return -1;
+  }
+}
+
+void update_status(void) {
+  int status;
+  pid_t pid;
+
+  do
+    pid = waitpid(WAIT_ANY, &status, WUNTRACED|WNOHANG);
+  while(!mark_process_status(pid, status));
 }
 
 int length(bgjobL *head) {
@@ -352,23 +468,20 @@ int length(bgjobL *head) {
   return(count);
 }
 
-void append(bgjobL **headRef, pid_t pid) {
+void append(bgjobL **headRef, pid_t pid, char* cmdline) {
   bgjobL *current = *headRef;
   bgjobL *newNode = NULL;
 
-  printf("current: %x\n", current);
+//  printf("current: %x\n", current);
   newNode = malloc(sizeof(bgjobL));
-  newNode->pid = pid;
-//  newNode->cmdline = cmd;
+  newNode->pgid = pid;
+  newNode->cmdline = cmdline;
   newNode->next = NULL;
 
-  printf("newNode->pid: %d, newNode->next: %x\n", newNode->pid, newNode->next);
   if(current == NULL) {
-    printf("current is NULL\n");
     *headRef = newNode;
   }
   else {
-    printf("current is not NULL\n");
     while(current->next != NULL) {
       current = current->next;
     }
@@ -376,3 +489,50 @@ void append(bgjobL **headRef, pid_t pid) {
   }
 }
 
+bgjobL *find_job(pid_t pgid) {
+  bgjobL *j;
+  
+  if(bgjobs != NULL) {
+    j = bgjobs;
+    while(j != NULL) {
+      if(j->pgid == pgid)
+        return j;
+      j = j->next;
+    }
+  }
+  return NULL;
+}
+
+int job_is_stopped (bgjobL *j) {
+  process *p;
+
+  p = j->first_process;
+  while(p != NULL) {
+    if(!p->completed && !p->stopped) return 0;
+    p = p->next;
+  }
+  return 1;
+}
+
+int job_is_completed(bgjobL *j) {
+  process *p;
+
+  p = j->first_process;
+  while(p != NULL) {
+    if(!p->completed) 
+      return 0;
+    p = p->next;
+  }
+  return 1;
+}
+      
+void format_job_infor(bgjobL *j, const char *status) {
+  fprintf(stderr, "%ld\t%s\t\t\t\t%s\n", (long)j->pgid, status, j->cmdline);
+}
+
+void free_job(bgjobL **j) {
+  if((*j)->cmdline != NULL) free((*j)->cmdline);
+  if((*j)->first_process != NULL) free((*j)->first_process);
+  if((*j)->next != NULL) free((*j)->next);
+  free(*j);
+}

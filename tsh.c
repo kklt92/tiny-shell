@@ -76,8 +76,8 @@ int main (int argc, char *argv[])
   shell_is_interactive = isatty(shell_terminal);
 
 
-  printf("shell_terminal: %d\n", shell_terminal);
-  printf("shell_is_interactive: %d\n", shell_is_interactive);
+//  printf("shell_terminal: %d\n", shell_terminal);
+//  printf("shell_is_interactive: %d\n", shell_is_interactive);
   /* shell initialization */
   if (signal(SIGINT, sig) == SIG_ERR) PrintPError("SIGINT");
   if (signal(SIGTSTP, sig) == SIG_ERR) PrintPError("SIGTSTP");
@@ -91,7 +91,7 @@ int main (int argc, char *argv[])
 
   tcsetpgrp(shell_terminal, shell_pgid);
   tcgetattr(shell_terminal, &shell_tmodes);
-  printf("shell_termnial now is: %d, the shell_pgid is: %d\n", shell_terminal, shell_pgid); 
+//  printf("shell_termnial now is: %d, the shell_pgid is: %d\n", shell_terminal, shell_pgid); 
 
   while (!forceExit) /* repeat forever */
   {
