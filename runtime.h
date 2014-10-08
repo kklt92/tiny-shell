@@ -71,12 +71,12 @@ typedef struct process {
   char completed;
   char stopped;
   int status;
-} process;
+} procesS;
 
 typedef struct bgjob_l {
   pid_t pgid;
   char* cmdline;
-  process *first_process;
+  struct process *first_process;
   struct bgjob_l* next;
   struct termios tmodes;
   int stdin, stdout, stderr;

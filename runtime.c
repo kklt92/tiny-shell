@@ -98,31 +98,36 @@ void RunCmd(commandT** cmd, int n)
 //      ReleaseCmdT(&cmd[i]);
 //  }
   bgjobL *job = NULL;
-  process *pl = NULL;
+  procesS *pl = NULL;
 
   job = malloc(sizeof(bgjobL));
-  pl = malloc(sizeof(process));
+  pl = malloc(sizeof(procesS));
 
   job->first_process = pl;
+
+  job->stdin = STDIN_FILENO;
+  job->stdout = STDOUT_FILENO;
+  job->stderr = STDOUT_FILENO;
 
   if(n == 1) {
     job->cmdline = cmd[0]->cmdline;
     pl->command = cmd[0];
-//    RunCmdFork(job, TRUE);
+    RunCmdFork(job, TRUE);
   }
   else {
     i = 1;
     while(cmd[i] != NULL) {
-      process *p = NULL;
-      p = malloc(sizeof(process));
+      procesS *p = NULL;
+      p = malloc(sizeof(procesS));
       p->command = cmd[i];
       pl->next = p;
 
       pl = p;
       i++;
     }
+    RunCmdFork(job, TRUE);
   }
-  RunCmdFork(job, TRUE);
+//  RunCmdFork(job, TRUE);
 
 
     
@@ -130,7 +135,7 @@ void RunCmd(commandT** cmd, int n)
 
 void RunCmdFork(bgjobL *job, bool fork)
 {
-  process *p;
+  procesS *p;
 
   p = job->first_process;
   if (p->command->argc<=0)
@@ -187,7 +192,7 @@ void RunCmdRedirIn(commandT* cmd, char* file)
 /*Try to run an external command*/
 static void RunExternalCmd(bgjobL *job, bool fork)
 {
-  process *p;
+  procesS *p;
   p = job->first_process;
   
   if (ResolveExternalCmd(p->command)){
@@ -248,7 +253,8 @@ static bool ResolveExternalCmd(commandT* cmd)
 
 static void Exec(bgjobL *job, bool forceFork)
 {
-  process *p;
+  procesS *p;
+  p = job->first_process;
   int bg = p->command->bg;
 
   pid_t pid,pid1;               // pid1 is parent pid.
@@ -302,7 +308,7 @@ static void Exec(bgjobL *job, bool forceFork)
   if(bg)
     RunCmdBg(job, 0);
   else {
-//    wait(NULL);
+    wait(NULL);
     RunCmdFg(job, 0);
   }
 }
@@ -367,7 +373,7 @@ void CheckJobs()
 {
   fflush(stdout);
   bgjobL *j, *jlast, *jnext;
-  process *p;
+  procesS *p;
 
   update_status();
 
@@ -427,7 +433,7 @@ void ReleaseCmdT(commandT **cmd){
   free(*cmd);
 }
 
-void launch_process(process *p, pid_t pgid, int infile, int outfile, int errfile) {
+void launch_process(procesS *p, pid_t pgid, int infile, int outfile, int errfile) {
   pid_t pid;
 
   if(shell_is_interactive) {
@@ -473,17 +479,17 @@ void wait_for_job(bgjobL *job)
   int status;
   pid_t pid;
 
-  do
+//  do
     pid = waitpid (WAIT_ANY, &status, WUNTRACED);
-  while (!mark_process_status(pid, status)
-          && !job_is_stopped(job)
-          && !job_is_completed(job));
+//  while (!mark_process_status(pid, status)
+//          && !job_is_stopped(job)
+//          && !job_is_completed(job));
 }
 
 int mark_process_status (pid_t pid, int status) 
 {
   bgjobL *j;
-  process *p;
+  procesS *p;
   if(pid>0) {
     j = bgjobs;
     while(j != NULL) {
@@ -566,7 +572,7 @@ bgjobL *find_job(pid_t pgid) {
 }
 
 int job_is_stopped (bgjobL *j) {
-  process *p;
+  procesS *p;
 
   p = j->first_process;
   while(p != NULL) {
@@ -577,7 +583,7 @@ int job_is_stopped (bgjobL *j) {
 }
 
 int job_is_completed(bgjobL *j) {
-  process *p;
+  procesS *p;
 
   p = j->first_process;
   while(p != NULL) {
@@ -607,7 +613,7 @@ void free_job(bgjobL **j) {
 }
 
 void mark_job_as_running(bgjobL *j) {
-  process *p;
+  procesS *p;
 
   p=j->first_process;
   while(p != NULL){
