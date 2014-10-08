@@ -75,6 +75,10 @@ int main (int argc, char *argv[])
   shell_terminal = STDIN_FILENO;
   shell_is_interactive = isatty(shell_terminal);
 
+//  while(tcgetpgrp(shell_terminal) != (shell_pgid = getpgrp())) {
+//    kill(-shell_pgid, SIGTTIN);
+//  }
+
 
 //  printf("shell_terminal: %d\n", shell_terminal);
 //  printf("shell_is_interactive: %d\n", shell_is_interactive);
@@ -95,7 +99,7 @@ int main (int argc, char *argv[])
 
   while (!forceExit) /* repeat forever */
   {
-    printf("%s> ", SHELLNAME);
+//    printf("%s> ", SHELLNAME);
     fflush(stdout);
     /* read command line */
     getCommandLine(&cmdLine, BUFSIZE);

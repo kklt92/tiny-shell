@@ -143,7 +143,7 @@ void RunCmdBg(commandT* cmd, pid_t pgid, pid_t pid)
   int i = 0;
   append(&bgjobs, pid, cmd->cmdline);
   i = length(bgjobs);
-  printf("[%d] %d\n", i, pid);
+//  printf("[%d] %d\n", i, pid);
 }
 
 void RunCmdPipe(commandT* cmd1, commandT* cmd2)
@@ -278,21 +278,27 @@ static void RunBuiltInCmd(commandT* cmd)
    }
   }      
   else if(strcmp(cmd->argv[0], "jobs") == 0) {
-    int i=0;
-    char status[] = "Stopped";
+/*    int i=0;
     bgjobL *current = NULL;
     if(bgjobs != NULL) {
       current = bgjobs;
       while(current != NULL) {
         i++;
-        printf("[%d]\t%s\t\t\t\t%s\n", i, status, current->cmdline); 
-      current = current->next;
+        
+        current = current->next;
       }
-    }
+    }*/
   }
   else if(strcmp(cmd->argv[0], "fg") == 0) {
   }
   else if(strcmp(cmd->argv[0], "cd") == 0) {
+    if(cmd->argv[1] != NULL) {
+      
+      chdir(cmd->argv[1]);
+    }
+    else {
+      chdir(getenv("HOME"));
+    }
   }
 }
 
@@ -325,8 +331,11 @@ void CheckJobs()
       jlast = j;
     }
     
-    else
+    
+    else {
+      format_job_infor(j, "Running");
       jlast = j;
+    }
     j = jnext;
   }
 }
@@ -527,7 +536,14 @@ int job_is_completed(bgjobL *j) {
 }
       
 void format_job_infor(bgjobL *j, const char *status) {
-  fprintf(stderr, "%ld\t%s\t\t\t\t%s\n", (long)j->pgid, status, j->cmdline);
+  int i = 1;
+  bgjobL *current = bgjobs;
+
+  while(current != j) {
+    current = current->next;
+    i++;
+  }
+  fprintf(stderr, "[%d]\t%s\t\t\t\t%s\n", i, status, j->cmdline);
 }
 
 void free_job(bgjobL **j) {
@@ -535,4 +551,24 @@ void free_job(bgjobL **j) {
   if((*j)->first_process != NULL) free((*j)->first_process);
   if((*j)->next != NULL) free((*j)->next);
   free(*j);
+}
+
+void mark_job_as_running(bgjobL *j) {
+  process *p;
+
+  p=j->first_process;
+  while(p != NULL){
+    p->stopped = 0;
+    p = p->next;
+  }
+}
+
+void continue_job( bgjobL *j, int foreground) {
+  mark_job_as_running(j);
+  if(foreground){
+//    RunCmdFg(j, 1);
+   }
+  else {
+//    RunCmdBg(j, 1);
+    }
 }
