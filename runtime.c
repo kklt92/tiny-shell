@@ -64,34 +64,20 @@
 
 #define NBUILTINCOMMANDS (sizeof BuiltInCommands / sizeof(char*))
 
-typedef struct process {
-  struct process *next;
-  pid_t pid;
-  char completed;
-  char stopped;
-  int status;
-} process;
 
-
-typedef struct bgjob_l {
-  pid_t pgid;
-  char* cmdline;
-  process *first_process;
-  struct bgjob_l* next;
-} bgjobL;
 
 
 /* the pids of the background processes */
 bgjobL *bgjobs = NULL;
 /************Function Prototypes******************************************/
 /* run command */
-static void RunCmdFork(commandT*, bool);
+static void RunCmdFork(bgjobL*, bool);
 /* runs an external program command after some checks */
-static void RunExternalCmd(commandT*, bool);
+static void RunExternalCmd(bgjobL*, bool);
 /* resolves the path and checks for exutable flag */
 static bool ResolveExternalCmd(commandT*);
 /* forks and runs a external program */
-static void Exec(commandT*, bool);
+static void Exec(bgjobL*, bool);
 /* runs a builtin command */
 static void RunBuiltInCmd(commandT*);
 /* checks whether a command is a builtin command */
@@ -104,46 +90,85 @@ void RunCmd(commandT** cmd, int n)
 {
   int i;
   total_task = n;
-  if(n == 1)
-    RunCmdFork(cmd[0], TRUE);
-  else{
-    RunCmdPipe(cmd[0], cmd[1]);
-    for(i = 0; i < n; i++)
-      ReleaseCmdT(&cmd[i]);
+//  if(n == 1)
+//    RunCmdFork(cmd[0], TRUE);
+//  else{
+//    RunCmdPipe(cmd[0], cmd[1]);
+//    for(i = 0; i < n; i++)
+//      ReleaseCmdT(&cmd[i]);
+//  }
+  bgjobL *job = NULL;
+  process *pl = NULL;
+
+  job = malloc(sizeof(bgjobL));
+  pl = malloc(sizeof(process));
+
+  job->first_process = pl;
+
+  if(n == 1) {
+    job->cmdline = cmd[0]->cmdline;
+    pl->command = cmd[0];
+//    RunCmdFork(job, TRUE);
   }
+  else {
+    i = 1;
+    while(cmd[i] != NULL) {
+      process *p = NULL;
+      p = malloc(sizeof(process));
+      p->command = cmd[i];
+      pl->next = p;
+
+      pl = p;
+      i++;
+    }
+  }
+  RunCmdFork(job, TRUE);
+
+
+    
 }
 
-void RunCmdFork(commandT* cmd, bool fork)
+void RunCmdFork(bgjobL *job, bool fork)
 {
-  if (cmd->argc<=0)
+  process *p;
+
+  p = job->first_process;
+  if (p->command->argc<=0)
     return;
-  if (IsBuiltIn(cmd->argv[0]))
+  if (IsBuiltIn(p->command->argv[0]))
   {
-    RunBuiltInCmd(cmd);
+    RunBuiltInCmd(p->command);
   }
   else
   {
-    RunExternalCmd(cmd, fork);
+    RunExternalCmd(job, fork);
   }
 }
 
-void RunCmdFg(commandT* cmd, pid_t pgid)
+void RunCmdFg(bgjobL *job, int cont)
 {
-  tcsetpgrp(shell_terminal, pgid);
+  tcsetpgrp(shell_terminal, job->pgid);
   
-  wait_for_cmd(cmd);
+  if(cont) {
+    tcsetattr(shell_terminal, TCSADRAIN, &job->tmodes);
+    if(kill(- job->pgid, SIGCONT) < 0)
+      perror("kill(SIGCONT)");
+  }
+  wait_for_job(job);
 
   tcsetpgrp(shell_terminal, shell_pgid);
 
+  tcgetattr(shell_terminal, &job->tmodes);
   tcsetattr(shell_terminal, TCSADRAIN, &shell_tmodes);
 
 }
-void RunCmdBg(commandT* cmd, pid_t pgid, pid_t pid)
+void RunCmdBg(bgjobL *job, int cont)
 {
-  int i = 0;
-  append(&bgjobs, pid, cmd->cmdline);
-  i = length(bgjobs);
-//  printf("[%d] %d\n", i, pid);
+  if(cont)
+    if(kill(- job->pgid, SIGCONT) < 0)
+      perror("kill (SIGCONT)");
+
+  append(&bgjobs, job);
 }
 
 void RunCmdPipe(commandT* cmd1, commandT* cmd2)
@@ -160,15 +185,18 @@ void RunCmdRedirIn(commandT* cmd, char* file)
 
 
 /*Try to run an external command*/
-static void RunExternalCmd(commandT* cmd, bool fork)
+static void RunExternalCmd(bgjobL *job, bool fork)
 {
-  if (ResolveExternalCmd(cmd)){
-    Exec(cmd, fork);
+  process *p;
+  p = job->first_process;
+  
+  if (ResolveExternalCmd(p->command)){
+    Exec(job, fork);
   }
   else {
-    printf("%s: command not found\n", cmd->argv[0]);
+    printf("%s: command not found\n", p->command->argv[0]);
     fflush(stdout);
-    ReleaseCmdT(&cmd);
+    ReleaseCmdT(&(p->command));
   }
 }
 
@@ -218,33 +246,64 @@ static bool ResolveExternalCmd(commandT* cmd)
   return FALSE; /*The command is not found or the user don't have enough priority to run.*/
 }
 
-static void Exec(commandT* cmd, bool forceFork)
+static void Exec(bgjobL *job, bool forceFork)
 {
+  process *p;
+  int bg = p->command->bg;
+
   pid_t pid,pid1;               // pid1 is parent pid.
-  pid1 = getpid();
-  pid = fork();
-  int status;
+  int mypipe[2], infile, outfile;
+
+  infile = job->stdin;
+  p = job->first_process;
+
+  while(p != NULL) {
+    if(p->next) {
+      if(pipe(mypipe) < 0) {
+        perror("pipe");
+        exit(1);
+      }
+      outfile = mypipe[1];
+    }
+    else {
+      outfile = job->stdout;
+    }
+    pid1 = getpid();
+    pid = fork();
+    int status;
 
 
-  if(pid <0) {    /* error occurred */
-    fprintf(stderr, "Fork Failed");
-  }
-  else if(pid == 0) {   // Child process
-//    execv(cmd->name, cmd->argv);
-      launch_process(cmd, pid1);    
-  }
-  else {
-    
-      
+    if(pid <0) {    /* error occurred */
+      fprintf(stderr, "Fork Failed");
+    }
+    else if(pid == 0) {   // Child process
+  //    execv(cmd->name, cmd->argv);
+        launch_process(p, job->pgid, infile, outfile, job->stderr);    
+    }
+    else {
+      p->pid = pid;
+      if(shell_is_interactive) {
+        if(!job->pgid)
+          job->pgid = pid;
+        setpgid(pid, job->pgid);
+      }
+    }
+
+    if(infile != job->stdin)
+      close(infile);
+    if(outfile != job->stdout)
+      close(outfile);
+    infile = mypipe[0];
+    p = p->next;
   }
 
   if(!shell_is_interactive)
-    wait_for_cmd(cmd);
-  if(cmd->bg)
-    RunCmdBg(cmd, pid1, pid);
+    wait_for_job(job);
+  if(bg)
+    RunCmdBg(job, 0);
   else {
-    wait(NULL);
-    RunCmdFg(cmd, pid1);
+//    wait(NULL);
+    RunCmdFg(job, 0);
   }
 }
 
@@ -333,7 +392,6 @@ void CheckJobs()
     
     
     else {
-      format_job_infor(j, "Running");
       jlast = j;
     }
     j = jnext;
@@ -369,14 +427,14 @@ void ReleaseCmdT(commandT **cmd){
   free(*cmd);
 }
 
-void launch_process(commandT *cmd, pid_t pgid, int infile, int outfile, int errfile) {
+void launch_process(process *p, pid_t pgid, int infile, int outfile, int errfile) {
   pid_t pid;
 
   if(shell_is_interactive) {
     pid = getpid();
     if(pgid == 0) pgid = pid;
     setpgid(pid, pgid);
-    if(!cmd->bg) {
+    if(!p->command->bg) {
       tcsetpgrp(shell_terminal, pgid);
     }
     else {}
@@ -405,12 +463,12 @@ void launch_process(commandT *cmd, pid_t pgid, int infile, int outfile, int errf
   }
 
 //  printf("cmd->name: %s, cmd->argv: %s\n", cmd->name, *(cmd->argv));
-  execv(cmd->name, cmd->argv);
+  execv(p->command->name, p->command->argv);
   perror("execv");
   exit(1);
 }
 
-void wait_for_cmd(commandT* cmd)
+void wait_for_job(bgjobL *job)
 {
   int status;
   pid_t pid;
@@ -418,8 +476,8 @@ void wait_for_cmd(commandT* cmd)
   do
     pid = waitpid (WAIT_ANY, &status, WUNTRACED);
   while (!mark_process_status(pid, status)
-          && !job_is_stopped(cmd)
-          && !job_is_completed(cmd));
+          && !job_is_stopped(job)
+          && !job_is_completed(job));
 }
 
 int mark_process_status (pid_t pid, int status) 
@@ -477,24 +535,19 @@ int length(bgjobL *head) {
   return(count);
 }
 
-void append(bgjobL **headRef, pid_t pid, char* cmdline) {
+void append(bgjobL **headRef, bgjobL *job) {
   bgjobL *current = *headRef;
-  bgjobL *newNode = NULL;
 
-//  printf("current: %x\n", current);
-  newNode = malloc(sizeof(bgjobL));
-  newNode->pgid = pid;
-  newNode->cmdline = cmdline;
-  newNode->next = NULL;
+
 
   if(current == NULL) {
-    *headRef = newNode;
+    *headRef = job;
   }
   else {
     while(current->next != NULL) {
       current = current->next;
     }
-    current->next = newNode;
+    current->next = job;
   }
 }
 
@@ -547,7 +600,7 @@ void format_job_infor(bgjobL *j, const char *status) {
 }
 
 void free_job(bgjobL **j) {
-  if((*j)->cmdline != NULL) free((*j)->cmdline);
+  if((*j)->cmdline != NULL) free((*j)->cmdline);  //TODO probably has seg fault. to delete
   if((*j)->first_process != NULL) free((*j)->first_process);
   if((*j)->next != NULL) free((*j)->next);
   free(*j);
@@ -566,9 +619,9 @@ void mark_job_as_running(bgjobL *j) {
 void continue_job( bgjobL *j, int foreground) {
   mark_job_as_running(j);
   if(foreground){
-//    RunCmdFg(j, 1);
+    RunCmdFg(j, 1);
    }
   else {
-//    RunCmdBg(j, 1);
+    RunCmdBg(j, 1);
     }
 }
