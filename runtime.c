@@ -308,7 +308,7 @@ static void Exec(bgjobL *job, bool forceFork)
   if(bg)
     RunCmdBg(job, 0);
   else {
-    wait(NULL);
+//    wait(NULL);
     RunCmdFg(job, 0);
   }
 }
@@ -343,16 +343,26 @@ static void RunBuiltInCmd(commandT* cmd)
    }
   }      
   else if(strcmp(cmd->argv[0], "jobs") == 0) {
-/*    int i=0;
+     int i=0;
     bgjobL *current = NULL;
     if(bgjobs != NULL) {
       current = bgjobs;
       while(current != NULL) {
         i++;
+        if(job_is_stopped(current)) {
+          format_job_infor(current, "Stopped");
+        }
+        else if(job_is_completed(current)) {
+          format_job_infor(current, "Done");
+        }
+        else {
+          format_job_infor(current, "Running");
+        }
+
         
         current = current->next;
       }
-    }*/
+    }
   }
   else if(strcmp(cmd->argv[0], "fg") == 0) {
   }
@@ -454,7 +464,7 @@ void launch_process(procesS *p, pid_t pgid, int infile, int outfile, int errfile
     signal(SIGCHLD, SIG_DFL);
   }
 //  printf("cmd->name: %s\n", cmd->name);
-
+/*
   if(infile != STDIN_FILENO) {
     dup2(infile, STDIN_FILENO);
     close(infile);
@@ -467,7 +477,7 @@ void launch_process(procesS *p, pid_t pgid, int infile, int outfile, int errfile
     dup2(errfile, STDERR_FILENO);
     close(errfile);
   }
-
+*/
 //  printf("cmd->name: %s, cmd->argv: %s\n", cmd->name, *(cmd->argv));
   execv(p->command->name, p->command->argv);
   perror("execv");
@@ -479,11 +489,11 @@ void wait_for_job(bgjobL *job)
   int status;
   pid_t pid;
 
-//  do
+  do
     pid = waitpid (WAIT_ANY, &status, WUNTRACED);
-//  while (!mark_process_status(pid, status)
-//          && !job_is_stopped(job)
-//          && !job_is_completed(job));
+  while (!mark_process_status(pid, status)
+          && !job_is_stopped(job)
+          && !job_is_completed(job));
 }
 
 int mark_process_status (pid_t pid, int status) 
@@ -602,7 +612,9 @@ void format_job_infor(bgjobL *j, const char *status) {
     current = current->next;
     i++;
   }
-  fprintf(stderr, "[%d]\t%s\t\t\t\t%s\n", i, status, j->cmdline);
+  
+  fprintf(stderr, "[%d]\t%s\t\t\t%s &\n", i, status, j->cmdline);
+  fflush(stdout);
 }
 
 void free_job(bgjobL **j) {

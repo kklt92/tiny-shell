@@ -86,6 +86,8 @@ int main (int argc, char *argv[])
   if (signal(SIGINT, sig) == SIG_ERR) PrintPError("SIGINT");
   if (signal(SIGTSTP, sig) == SIG_ERR) PrintPError("SIGTSTP");
 
+  signal(SIGTTOU, SIG_IGN);
+
   shell_pgid = getpid();
   if(setpgid(shell_pgid, shell_pgid) < 0)
   {
@@ -99,7 +101,7 @@ int main (int argc, char *argv[])
 
   while (!forceExit) /* repeat forever */
   {
-//    printf("%s> ", SHELLNAME);
+    printf("%s> ", SHELLNAME);
     fflush(stdout);
     /* read command line */
     getCommandLine(&cmdLine, BUFSIZE);
