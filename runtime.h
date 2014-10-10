@@ -64,6 +64,28 @@ typedef struct command_t
   char* argv[];
 } commandT;
 
+typedef struct process {
+  struct process *next;
+  pid_t pid;
+  struct command_t* command;
+  char completed;
+  char stopped;
+  int status;
+} procesS;
+
+typedef struct bgjob_l {
+  pid_t pgid;
+  char* cmdline;
+  struct process *first_process;
+  struct bgjob_l* next;
+  struct termios tmodes;
+  int stdin, stdout, stderr;
+  int backg;
+} bgjobL;
+
+
+
+
 /************Global Variables*********************************************/
 
 /***********************************************************************
@@ -91,7 +113,7 @@ EXTERN void RunCmd(commandT**,int);
  *    Input: a command structure
  *    Output: void
  ***********************************************************************/
-EXTERN void RunCmdBg(commandT*, pid_t, pid_t);
+EXTERN void RunCmdBg(bgjobL*, int);
 
 /***********************************************************************
  *  Title: Runs two command with a pipe
@@ -174,7 +196,7 @@ EXTERN char* getLogin();
  ***********************************************************************/
 EXTERN void CheckJobs();
 
-EXTERN void wait_for_cmd(commandT*);
+EXTERN void wait_for_job(bgjobL*);
 /************External Declaration*****************************************/
 
 /**************Definition***************************************************/
