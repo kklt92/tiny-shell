@@ -156,9 +156,12 @@ void RunCmdFork(bgjobL *job, bool fork)
 
 void RunCmdFg(bgjobL *job, int cont)
 {
+  int status;
 //  if(fgjob != NULL) RunCmdBg(fgjob, 0);
 //  fgjob = job;
   
+  if(fgjob == NULL) fgjob = job;
+
   tcsetpgrp(shell_terminal, job->pgid);
   
   if(cont) {
@@ -166,8 +169,18 @@ void RunCmdFg(bgjobL *job, int cont)
     if(kill(- job->pgid, SIGCONT) < 0)
       perror("kill(SIGCONT)");
   }
-  wait_for_job(job);
+  status = wait_for_job(job);
 
+  if(status !=5247) {
+    fgjob == NULL;
+  }
+  if(status == 5247) {
+    RunCmdBg(job, 0);
+    format_job_infor(job, "Stopped");
+    mark_job_as_stopped(job);
+
+    fgjob == NULL;
+  }
   tcsetpgrp(shell_terminal, shell_pgid);
 
   tcgetattr(shell_terminal, &job->tmodes);
@@ -176,9 +189,18 @@ void RunCmdFg(bgjobL *job, int cont)
 }
 void RunCmdBg(bgjobL *job, int cont)
 {
+  bgjobL *j;
+  j = bgjobs;
   if(cont)
     if(kill(- job->pgid, SIGCONT) < 0)
       perror("kill (SIGCONT)");
+   
+
+  while(j != NULL) {
+    if(j == job) return;
+    
+    j=j->next;
+  }
   append(&bgjobs, job);
 }
 
@@ -262,6 +284,7 @@ static void Exec(bgjobL *job, bool forceFork)
   procesS *p;
   p = job->first_process;
   int bg = p->command->bg;
+  int status;
 
   job->backg = bg;
   pid_t pid,pid1;               // pid1 is parent pid.
@@ -283,7 +306,6 @@ static void Exec(bgjobL *job, bool forceFork)
     }
     pid1 = getpid();
     pid = fork();
-    int status;
 
 
     if(pid <0) {    /* error occurred */
@@ -311,7 +333,7 @@ static void Exec(bgjobL *job, bool forceFork)
   }
 
   if(!shell_is_interactive)
-    wait_for_job(job);
+    status = wait_for_job(job);
   if(bg)
     RunCmdBg(job, 0);
   else {
@@ -339,10 +361,34 @@ static void RunBuiltInCmd(commandT* cmd)
   bgjobL *b;
   if(strcmp(cmd->argv[0], "bg") == 0) {
     if(bgjobs != NULL){
+      if(cmd->argv[1] == NULL) {
+        
       int i=1;
       for(b = bgjobs; b; b = b->next) {
           printf("[%d]+ %s &\n", i, b->cmdline );
           i++;
+        }
+      }
+      else{
+        char* paras = cmd->argv[1];
+        char c = paras[0];
+        int id = c-48;
+        b = bgjobs;
+        while(b != NULL) {
+          if(b->jobid == id) {
+            continue_job(b, 0);
+            break;
+          }
+          else {
+            if(b->next == NULL) {
+              printf("-tsh: bg: cannot find job %d\n", id);
+              break;
+            }
+            else {
+              b = b->next;
+            }
+          }
+        }
       }
     }
     else {
@@ -516,7 +562,7 @@ void launch_process(procesS *p, pid_t pgid, int infile, int outfile, int errfile
   exit(1);
 }
 
-void wait_for_job(bgjobL *job)
+int wait_for_job(bgjobL *job)
 {
   int status;
   pid_t pid;
@@ -526,6 +572,8 @@ void wait_for_job(bgjobL *job)
   while ((mark_process_status(pid, status) == 0)
           && !job_is_stopped(job)
           && !job_is_completed(job));
+
+  return status;
 }
 
 int mark_process_status (pid_t pid, int status) 
@@ -656,6 +704,10 @@ void format_job_infor(bgjobL *j, const char *status) {
   if(strcmp(status, "Done")==0) {
     fprintf(stdout, "[%d]\t%s\t\t\t%s\n", j->jobid, status, j->cmdline);
   }
+  else if(strcmp(status, "Stopped") == 0) {
+    fprintf(stdout, "[%d]\t%s\t\t\t%s\n", j->jobid, status, j->cmdline);
+  }
+
   else{
     fprintf(stdout, "[%d]\t%s\t\t\t%s &\n", j->jobid, status, j->cmdline);
   }
@@ -687,12 +739,33 @@ void mark_job_as_running(bgjobL *j) {
 }
 
 void continue_job( bgjobL *j, int foreground) {
-  mark_job_as_running(j);
-  if(foreground==1){
-    RunCmdFg(j, 1);
+  int cont;
+  if(job_is_stopped){
+    mark_job_as_running(j);
+    cont = 1;
   }
   else {
-    RunCmdBg(j, 1);
+    cont = 0;
+  }
+//  printf("job: %s mark cont as %d\n", j->cmdline, cont);
+  fflush(stdout);
+  if(foreground==1){
+    
+    RunCmdFg(j, cont);
+  }
+  else {
+    RunCmdBg(j, cont);
   }
 }
+  
 
+
+void mark_job_as_stopped(bgjobL *j) {
+  procesS *p;
+
+  p=j->first_process;
+  while(p != NULL){
+    p->stopped = 1;
+    p = p->next;
+  }
+}

@@ -198,7 +198,7 @@ EXTERN char* getLogin();
  ***********************************************************************/
 EXTERN void CheckJobs();
 
-EXTERN void wait_for_job(bgjobL*);
+EXTERN int wait_for_job(bgjobL*);
 
 EXTERN void format_job_infor(bgjobL*, const char*);
 /************External Declaration*****************************************/

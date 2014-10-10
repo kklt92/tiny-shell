@@ -117,7 +117,7 @@ int main (int argc, char *argv[])
   signal(SIGTTOU, SIG_IGN);
   signal(SIGTTIN, SIG_IGN);
 
-  initial_signal();
+//  initial_signal();
  
   shell_pgid = getpid();
   if(setpgid(shell_pgid, shell_pgid) < 0)
@@ -134,7 +134,7 @@ int main (int argc, char *argv[])
   while (!forceExit) /* repeat forever */
   {
 
-    signal_mask();
+//    signal_mask();
 //    printf("%s> ", SHELLNAME);
     fflush(stdout);
     /* read command line */
@@ -151,7 +151,7 @@ int main (int argc, char *argv[])
       continue;
     }
 
-    reset_signal_mask();
+//    reset_signal_mask();
     /* checks the status of background jobs */
     CheckJobs();
 
@@ -172,15 +172,15 @@ int main (int argc, char *argv[])
 
 static void sig(int signo)
 {
-  if(signo == SIGINT) {
-    if(bgjobs != NULL) {
-      bgjobL *j;
-      j = bgjobs;
-      while((j != NULL) && (j->backg == 1)) {
-        j = j->next;
-      }
-      if(j->pgid > 0 && j!= NULL && j->backg == 0)
-        kill(-j->pgid, SIGINT);
+/*  if(signo == SIGINT) {
+//    if(bgjobs != NULL) {
+//      bgjobL *j;
+//      j = bgjobs;
+//      while((j != NULL) && (j->backg == 1)) {
+//        j = j->next;
+//      }
+//      if(j->pgid > 0 && j!= NULL && j->backg == 0)
+//        kill(-j->pgid, SIGINT);
     }
   }
 
@@ -188,19 +188,38 @@ static void sig(int signo)
   if(signo == SIGTSTP) {
 //    printf("recieved IGTSTP\n");
 //    fflush(stdout);
-        if(fgjob != NULL) {
-        kill(fgjob->pgid, SIGTSTP);
-        format_job_infor(fgjob, "Stopped");
-        RunCmdBg(fgjob, 0);
+//        if(fgjob != NULL) {
+//        kill(fgjob->pgid, SIGTSTP);
+//        format_job_infor(fgjob, "Stopped");
+//        RunCmdBg(fgjob, 0);
       }
     }
       
   
   if(signo == SIGCHLD) {
-    int status;
-    pid_t pid;
-    while((pid = waitpid(-1, &status, WNOHANG)) > 0) {
-    }
+//    int status;
+//    pid_t pid;
+//    while((pid = waitpid(-1, &status, WNOHANG)) > 0) {
+//    }
+    }*/
+    if (signo == SIGINT)
+      {
+
+//        printf("SIGINT!!!!\n");
+        if(fgjob == NULL)
+          return;
+        else {
+          if(kill(-fgjob->pgid, SIGINT))
+            perror("ERROR, KILL->SIGINT");
+        }
+      }
+    if(signo == SIGTSTP) {
+      if(fgjob == NULL)
+        return;
+      else {
+        if(kill(-fgjob->pgid, SIGTSTP))
+          perror("KILL->SIGTSTP");
+      }
     }
 }
 
