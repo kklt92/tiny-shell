@@ -109,8 +109,6 @@ void RunCmd(commandT** cmd, int n)
 //  dup2(STDOUT_FILENO, job->stdout);
 //  dup2(STDERR_FILENO, job->stderr);
 
-  printf("n: %d\n", n);
-  fflush(stdout);
 
   if(n == 1) {
     job->cmdline = strdup(cmd[0]->cmdline);
@@ -125,6 +123,7 @@ void RunCmd(commandT** cmd, int n)
       p->command = cmd[i];
       pl->next = p;
 
+      printf("pipeline mode enable\n");
       pl = p;
       i++;
     }
@@ -260,6 +259,7 @@ static void Exec(bgjobL *job, bool forceFork)
   p = job->first_process;
   int bg = p->command->bg;
 
+  job->backg = bg;
   pid_t pid,pid1;               // pid1 is parent pid.
   int mypipe[2], infile, outfile;
 
@@ -664,7 +664,12 @@ void free_job(bgjobL **j) {
 //  printf("free_job => 0x%08x\n", *j);
   if((*j)==bgjobs) bgjobs = NULL;
 //  if((*j)->cmdline != NULL) free((*j)->cmdline);  //TODO probably has seg fault. to delete
-  if((*j)->first_process != NULL) free((*j)->first_process);
+//  if((*j)->first_process != NULL) {
+//    if((*j)->first_process->command != NULL) {
+//      ReleaseCmdT(&((*j)->first_process->command));
+//    }
+//    free((*j)->first_process);
+//  }
  // if((*j)->next != NULL) free((*j)->next);
   free(*j);
 }

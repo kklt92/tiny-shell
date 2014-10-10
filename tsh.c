@@ -58,6 +58,7 @@ pid_t shell_pgid;
 struct termios shell_tmodes;
 int shell_terminal;
 int shell_is_interactive = 1;
+static sigset_t block_set, old_block_set;
 
 /************Function Prototypes******************************************/
 /* handles SIGINT and SIGSTOP signals */	
@@ -82,7 +83,7 @@ int main (int argc, char *argv[])
                     "./testsuite/myspin 3 &",
                     "./testsuite/myspin 1 &"};*/
 
-  char *input[] = {"bash -c \"sleep 2; echo hello1;\" &",
+/*  char *input[] = {"bash -c \"sleep 2; echo hello1;\" &",
                     "bash -c \"sleep 4; echo hello2;\" &",
                     "jobs",
                     "sleep 3",
@@ -92,8 +93,9 @@ int main (int argc, char *argv[])
                     "bash -c \"sleep 4; echo hello3;\" &",
                     "jobs",
                     "sleep 5",
-                    "jobs"};
+                    "jobs"};*/
 
+  char *input[] = {"echo &", " "};
 
   int i = 0;
 
@@ -115,6 +117,7 @@ int main (int argc, char *argv[])
   signal(SIGTTOU, SIG_IGN);
   signal(SIGTTIN, SIG_IGN);
 
+  initial_signal();
  
   shell_pgid = getpid();
   if(setpgid(shell_pgid, shell_pgid) < 0)
@@ -130,6 +133,8 @@ int main (int argc, char *argv[])
 
   while (!forceExit) /* repeat forever */
   {
+
+    signal_mask();
 //    printf("%s> ", SHELLNAME);
     fflush(stdout);
     /* read command line */
@@ -146,7 +151,7 @@ int main (int argc, char *argv[])
       continue;
     }
 
-    
+    reset_signal_mask();
     /* checks the status of background jobs */
     CheckJobs();
 
@@ -168,11 +173,56 @@ int main (int argc, char *argv[])
 static void sig(int signo)
 {
   if(signo == SIGINT) {
+    if(bgjobs != NULL) {
+      bgjobL *j;
+      j = bgjobs;
+      while((j != NULL) && (j->backg == 1)) {
+        j = j->next;
+      }
+      if(j->pgid > 0 && j!= NULL && j->backg == 0)
+        kill(-j->pgid, SIGINT);
+    }
+  }
 
+
+  if(signo == SIGTSTP) {
+//    printf("recieved IGTSTP\n");
+//    fflush(stdout);
+    if(bgjobs != NULL) {
+      bgjobL *j;
+      j = bgjobs;
+      while((j != NULL) && (j->backg == 1)) {
+        j = j->next;
+      }
+      if(j->pgid > 0 && j!= NULL && j->backg == 0){
+        j->first_process->stopped = 1;
+        kill(-j->pgid, SIGTSTP);
+        format_job_infor(j, "Stopped");
+        RunCmdBg(j, 0);
+      }
+    }
+      
   }
   if(signo == SIGCHLD) {
-  }
-  if(signo == SIGTSTP) {
-  }
+    int status;
+    pid_t pid;
+    while((pid = waitpid(-1, &status, WNOHANG)) > 0) {
+    }
+    }
+}
+
+
+void initial_signal() {
+  sigemptyset(&block_set);
+  sigemptyset(&old_block_set);
+  sigaddset(&block_set, SIGCHLD);
+}
+
+void signal_mask() {
+  sigprocmask(SIG_SETMASK, &block_set, &old_block_set);
+}
+
+void reset_signal_mask() {
+  sigprocmask(SIG_SETMASK, &block_set, NULL);
 }
 
