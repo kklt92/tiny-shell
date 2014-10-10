@@ -80,6 +80,7 @@ typedef struct bgjob_l {
   struct bgjob_l* next;
   struct termios tmodes;
   int stdin, stdout, stderr;
+  int backg;
 } bgjobL;
 
 
