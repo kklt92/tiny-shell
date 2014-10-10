@@ -26,6 +26,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <termio.h>
 /************Private include**********************************************/
 #include "interpreter.h"
 #include "io.h"

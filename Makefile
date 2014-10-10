@@ -18,8 +18,8 @@
 ###############################################################################
 
 # handin info
-TEAM = `Color-egg`
-VERSION = `date +%Y%m%d%H%M%S`
+TEAM = "wml431+whw437"
+VERSION = 10032014
 PROJ = tsh
 
 CC = gcc
@@ -43,7 +43,7 @@ TESTING_PROGS = myspin mysplit mystop
 VM_NAME = "Ubuntu_1404"
 VM_PORT = "3022"
 
-SHELL_ARCH = "64"
+SHELL_ARCH = "32"
 
 all: ${PROGS}
 

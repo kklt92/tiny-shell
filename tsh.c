@@ -36,6 +36,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <termios.h>
 
 /************Private include**********************************************/
 #include "tsh.h"
@@ -53,6 +54,10 @@
 #define BUFSIZE 80
 
 /************Global Variables*********************************************/
+pid_t shell_pgid;
+struct termios shell_tmodes;
+int shell_terminal;
+int shell_is_interactive = 1;
 
 /************Function Prototypes******************************************/
 /* handles SIGINT and SIGSTOP signals */	
@@ -66,24 +71,82 @@ int main (int argc, char *argv[])
 {
   /* Initialize command buffer */
   char* cmdLine = malloc(sizeof(char*)*BUFSIZE);
+/*  char* input[] = {"bash -c \"sleep 2; echo hello2;\" &",
+                    "echo hello",
+                    "bash -c \"sleep 1; echo hello3;\" &",
+                    "echo hello4",
+                    "sleep 3",
+                    "jobs"};*/
 
+/*  char* input[] = {"./testsuite/myspin 5 &",
+                    "./testsuite/myspin 3 &",
+                    "./testsuite/myspin 1 &"};*/
+
+  char *input[] = {"bash -c \"sleep 2; echo hello1;\" &",
+                    "bash -c \"sleep 4; echo hello2;\" &",
+                    "jobs",
+                    "sleep 3",
+                    "jobs",
+                    "sleep 2",
+                    "jobs",
+                    "bash -c \"sleep 4; echo hello3;\" &",
+                    "jobs",
+                    "sleep 5",
+                    "jobs"};
+
+
+  int i = 0;
+
+  shell_terminal = STDIN_FILENO;
+//shell_is_interactive = isatty(shell_terminal);
+
+//  while(tcgetpgrp(shell_terminal) != (shell_pgid = getpgrp())) {
+//    kill(-shell_pgid, SIGTTIN);
+//  }
+
+
+//  printf("shell_terminal: %d\n", shell_terminal);
+//  printf("shell_is_interactive: %d\n", shell_is_interactive);
   /* shell initialization */
-  if (signal(SIGINT, sig) == SIG_ERR) PrintPError("SIGINT");
-  if (signal(SIGTSTP, sig) == SIG_ERR) PrintPError("SIGTSTP");
+//  if (signal(SIGINT, sig) == SIG_ERR) PrintPError("SIGINT");
+//  if (signal(SIGTSTP, sig) == SIG_ERR) PrintPError("SIGTSTP");
+
+  signal(SIGTTOU, SIG_IGN);
+  signal(SIGQUIT, SIG_IGN);
+  signal(SIGTSTP, SIG_IGN);
+
+  /*
+  shell_pgid = getpid();
+  if(setpgid(shell_pgid, shell_pgid) < 0)
+  {
+    PrintPError("Couldn't put the shell in its own process group");
+    exit(1);
+  }
+
+  tcsetpgrp(shell_terminal, shell_pgid);
+  tcgetattr(shell_terminal, &shell_tmodes);
+  */
+//  printf("shell_termnial now is: %d, the shell_pgid is: %d\n", shell_terminal, shell_pgid); 
 
   while (!forceExit) /* repeat forever */
   {
-    printf("%s> ", SHELLNAME);
+//    printf("%s> ", SHELLNAME);
     fflush(stdout);
     /* read command line */
-    getCommandLine(&cmdLine, BUFSIZE);
+    if(i < 0)
+      strcpy(cmdLine, input[i]);
+    else
+      getCommandLine(&cmdLine, BUFSIZE);
 
+//    printf("========================================\n");
+//    printf("input: %s\n", cmdLine);
     if(strcmp(cmdLine, "exit") == 0)
     {
       forceExit=TRUE;
       continue;
     }
 
+    
     /* checks the status of background jobs */
     CheckJobs();
 
@@ -93,6 +156,8 @@ int main (int argc, char *argv[])
 
 //    printf("%s\n", cmdLine);
     
+    *cmdLine = NULL;
+    i++;
   }
 
   /* shell termination */
