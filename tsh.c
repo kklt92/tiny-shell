@@ -113,6 +113,7 @@ int main (int argc, char *argv[])
 
   signal(SIGTTOU, SIG_IGN);
   signal(SIGQUIT, SIG_IGN);
+  signal(SIGTTIN, SIG_IGN);
   signal(SIGTSTP, SIG_IGN);
 
   /*

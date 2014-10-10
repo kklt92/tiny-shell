@@ -81,6 +81,7 @@ typedef struct bgjob_l {
   struct termios tmodes;
   int stdin, stdout, stderr;
   int backg;
+  int jobid;
 } bgjobL;
 
 

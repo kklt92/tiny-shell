@@ -113,7 +113,7 @@ void RunCmd(commandT** cmd, int n)
   if(n == 1) {
     job->cmdline = strdup(cmd[0]->cmdline);
     pl->command = cmd[0];
-    RunCmdFork(job, TRUE);
+//    RunCmdFork(job, TRUE);
   }
   else {
     i = 1;
@@ -126,9 +126,10 @@ void RunCmd(commandT** cmd, int n)
       pl = p;
       i++;
     }
-    RunCmdFork(job, TRUE);
+//    RunCmdFork(job, TRUE);
   }
-//  RunCmdFork(job, TRUE);
+
+  RunCmdFork(job, TRUE);
 
 
     
@@ -365,6 +366,27 @@ static void RunBuiltInCmd(commandT* cmd)
     }
   }
   else if(strcmp(cmd->argv[0], "fg") == 0) {
+    bgjobL *j, *jlast, *jnext ;
+    j = bgjobs;
+    int i = 0;
+    jlast = NULL;
+    if(cmd->argv[1] != NULL) {
+      while(j->jobid != atoi(cmd->argv[1])) {
+        jlast = j;
+        if(j->next != NULL) {
+          j = j->next;
+        }
+        i++;
+        if(i == 50) break;
+      }
+    }
+//    printf("jlast: %x\n", jlast);
+//    fflush(stdout);
+    if(jlast)
+      jlast->next = j->next;
+    else
+      bgjobs = j->next;
+    continue_job(j, 1);
   }
   else if(strcmp(cmd->argv[0], "cd") == 0) {
     if(cmd->argv[1] != NULL) {
@@ -483,7 +505,6 @@ void launch_process(procesS *p, pid_t pgid, int infile, int outfile, int errfile
   }
 */
 //  printf("cmd->name: %s, cmd->argv: %s\n", cmd->name, *(cmd->argv));
-  fflush(stdout);
   execv(p->command->name, p->command->argv);
   perror("execv");
   exit(1);
@@ -558,17 +579,27 @@ int length(bgjobL *head) {
 
 void append(bgjobL **headRef, bgjobL *job) {
   bgjobL *current = *headRef;
+  int i = 1;
 
 
 
   if(current == NULL) {
     *headRef = job;
+    job->jobid = 1;
   }
   else {
+    i=2;
     while(current->next != NULL) {
+      if(job->jobid != NULL) {
+        printf("JobID is ==> %d", current->jobid);
+        fflush(stdout);
+        i = current->jobid + 1;
+      }
       current = current->next;
+      
     }
     current->next = job;
+    job->jobid = i;
   }
 }
 
@@ -619,10 +650,10 @@ void format_job_infor(bgjobL *j, const char *status) {
   }
  
   if(strcmp(status, "Done")==0) {
-    fprintf(stdout, "[%d]\t%s\t\t\t%s\n", i, status, j->cmdline);
+    fprintf(stdout, "[%d]\t%s\t\t\t%s\n", j->jobid, status, j->cmdline);
   }
   else{
-    fprintf(stdout, "[%d]\t%s\t\t\t%s &\n", i, status, j->cmdline);
+    fprintf(stdout, "[%d]\t%s\t\t\t%s &\n", j->jobid, status, j->cmdline);
   }
   fflush(stdout);
 }
@@ -648,12 +679,11 @@ void mark_job_as_running(bgjobL *j) {
 
 void continue_job( bgjobL *j, int foreground) {
   mark_job_as_running(j);
-  if(foreground){
+  if(foreground==1){
     RunCmdFg(j, 1);
-   }
+  }
   else {
     RunCmdBg(j, 1);
-    }
+  }
 }
 
-    
