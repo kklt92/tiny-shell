@@ -117,7 +117,7 @@ int main (int argc, char *argv[])
   signal(SIGTTOU, SIG_IGN);
   signal(SIGTTIN, SIG_IGN);
 
-//  initial_signal();
+  initial_signal();
  
   shell_pgid = getpid();
   if(setpgid(shell_pgid, shell_pgid) < 0)
@@ -134,7 +134,7 @@ int main (int argc, char *argv[])
   while (!forceExit) /* repeat forever */
   {
 
-//    signal_mask();
+    signal_mask();
 //    printf("%s> ", SHELLNAME);
     fflush(stdout);
     /* read command line */
@@ -151,7 +151,7 @@ int main (int argc, char *argv[])
       continue;
     }
 
-//    reset_signal_mask();
+    reset_signal_mask();
     /* checks the status of background jobs */
     CheckJobs();
 

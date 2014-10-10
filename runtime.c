@@ -172,14 +172,14 @@ void RunCmdFg(bgjobL *job, int cont)
   status = wait_for_job(job);
 
   if(status !=5247) {
-    fgjob == NULL;
+    fgjob = NULL;
   }
   if(status == 5247) {
     RunCmdBg(job, 0);
     format_job_infor(job, "Stopped");
     mark_job_as_stopped(job);
 
-    fgjob == NULL;
+    fgjob = NULL;
   }
   tcsetpgrp(shell_terminal, shell_pgid);
 
