@@ -85,7 +85,7 @@ typedef struct bgjob_l {
 } bgjobL;
 
 
-
+EXTERN bgjobL *fgjob;
 EXTERN bgjobL *bgjobs;
 
 /************Global Variables*********************************************/

@@ -66,6 +66,7 @@
 
 
 
+bgjobL *fgjob = NULL;
 
 /* the pids of the background processes */
 bgjobL *bgjobs = NULL;
@@ -155,6 +156,9 @@ void RunCmdFork(bgjobL *job, bool fork)
 
 void RunCmdFg(bgjobL *job, int cont)
 {
+//  if(fgjob != NULL) RunCmdBg(fgjob, 0);
+//  fgjob = job;
+  
   tcsetpgrp(shell_terminal, job->pgid);
   
   if(cont) {
@@ -593,8 +597,6 @@ void append(bgjobL **headRef, bgjobL *job) {
     i=2;
     while(current->next != NULL) {
       if(job->jobid != NULL) {
-        printf("JobID is ==> %d", current->jobid);
-        fflush(stdout);
         i = current->jobid + 1;
       }
       current = current->next;

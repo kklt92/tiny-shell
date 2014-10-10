@@ -188,21 +188,14 @@ static void sig(int signo)
   if(signo == SIGTSTP) {
 //    printf("recieved IGTSTP\n");
 //    fflush(stdout);
-    if(bgjobs != NULL) {
-      bgjobL *j;
-      j = bgjobs;
-      while((j != NULL) && (j->backg == 1)) {
-        j = j->next;
-      }
-      if(j->pgid > 0 && j!= NULL && j->backg == 0){
-        j->first_process->stopped = 1;
-        kill(-j->pgid, SIGTSTP);
-        format_job_infor(j, "Stopped");
-        RunCmdBg(j, 0);
+        if(fgjob != NULL) {
+        kill(fgjob->pgid, SIGTSTP);
+        format_job_infor(fgjob, "Stopped");
+        RunCmdBg(fgjob, 0);
       }
     }
       
-  }
+  
   if(signo == SIGCHLD) {
     int status;
     pid_t pid;
