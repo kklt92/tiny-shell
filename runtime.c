@@ -109,6 +109,8 @@ void RunCmd(commandT** cmd, int n)
 //  dup2(STDOUT_FILENO, job->stdout);
 //  dup2(STDERR_FILENO, job->stderr);
 
+  printf("n: %d\n", n);
+  fflush(stdout);
 
   if(n == 1) {
     job->cmdline = strdup(cmd[0]->cmdline);
@@ -262,7 +264,7 @@ static void Exec(bgjobL *job, bool forceFork)
   int mypipe[2], infile, outfile;
 
   infile = job->stdin;
-  p = job->first_process;
+//  p = job->first_process;
 
   while(p != NULL) {
     if(p->next) {

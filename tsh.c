@@ -108,15 +108,14 @@ int main (int argc, char *argv[])
 //  printf("shell_terminal: %d\n", shell_terminal);
 //  printf("shell_is_interactive: %d\n", shell_is_interactive);
   /* shell initialization */
-//  if (signal(SIGINT, sig) == SIG_ERR) PrintPError("SIGINT");
-//  if (signal(SIGTSTP, sig) == SIG_ERR) PrintPError("SIGTSTP");
+  if (signal(SIGINT, sig) == SIG_ERR) PrintPError("SIGINT");
+  if (signal(SIGTSTP, sig) == SIG_ERR) PrintPError("SIGTSTP");
+  if (signal(SIGCHLD, sig) == SIG_ERR) PrintPError("SIGCHLD");
 
   signal(SIGTTOU, SIG_IGN);
-  signal(SIGQUIT, SIG_IGN);
   signal(SIGTTIN, SIG_IGN);
-  signal(SIGTSTP, SIG_IGN);
 
-  /*
+ 
   shell_pgid = getpid();
   if(setpgid(shell_pgid, shell_pgid) < 0)
   {
@@ -126,7 +125,7 @@ int main (int argc, char *argv[])
 
   tcsetpgrp(shell_terminal, shell_pgid);
   tcgetattr(shell_terminal, &shell_tmodes);
-  */
+  
 //  printf("shell_termnial now is: %d, the shell_pgid is: %d\n", shell_terminal, shell_pgid); 
 
   while (!forceExit) /* repeat forever */
@@ -168,7 +167,12 @@ int main (int argc, char *argv[])
 
 static void sig(int signo)
 {
-  printf("\nsigno is %d", signo);
-  fflush(stdout);
+  if(signo == SIGINT) {
+
+  }
+  if(signo == SIGCHLD) {
+  }
+  if(signo == SIGTSTP) {
+  }
 }
 
