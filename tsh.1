@@ -1,0 +1,36 @@
+.TH tsh.1 "Oct 2014"
+.SH NAME
+tsh \- a tiny shell contents
+.SH SYNOPSIS
+.B [
+.I command
+.B ] | [
+.I command
+.B ] | [
+.I command
+.B ] ...
+.SH DESCRIPTION
+This page describes the conventions that the tiny shell could employ. The shell is a simple command line interpreter. It gives control of processes, execute commands, handle the signals, as well as interact with I/O devices. The shell is implemented in C programming language that will perform on Unix Operating System.
+.SH Options
+There are a number of commands that the shell can evaluate. The tiny shell interprets the follwoing options when it is invoked:
+.IP ./tsh
+Run the tiny shell.
+.IP exit
+The shell terminate.
+.IP jobs
+Print out a table of all currently running jobs.
+.IP "bg [number]"
+Bring the job from foreground to background.
+.IP "fg [number]"
+Bring the job from background to foreground.
+.SH FILES
+The important files and source codes are described in this page. 
+.IP tsh.c
+Contain the main function to open shell. Invoke signal handler when necessary.
+.IP interpreter.c
+Interpret the commands that are acquared by the shell.
+.IP runtime.c
+Evaluate the commands and provide the corresponding responses.
+.IP Makefile
+Organize code compilation.
+
