@@ -72,28 +72,6 @@ int main (int argc, char *argv[])
 {
   /* Initialize command buffer */
   char* cmdLine = malloc(sizeof(char*)*BUFSIZE);
-/*  char* input[] = {"bash -c \"sleep 2; echo hello2;\" &",
-                    "echo hello",
-                    "bash -c \"sleep 1; echo hello3;\" &",
-                    "echo hello4",
-                    "sleep 3",
-                    "jobs"};*/
-
-/*  char* input[] = {"./testsuite/myspin 5 &",
-                    "./testsuite/myspin 3 &",
-                    "./testsuite/myspin 1 &"};*/
-
-/*  char *input[] = {"bash -c \"sleep 2; echo hello1;\" &",
-                    "bash -c \"sleep 4; echo hello2;\" &",
-                    "jobs",
-                    "sleep 3",
-                    "jobs",
-                    "sleep 2",
-                    "jobs",
-                    "bash -c \"sleep 4; echo hello3;\" &",
-                    "jobs",
-                    "sleep 5",
-                    "jobs"};*/
 
   char *input[] = {"echo &", " "};
 
@@ -107,8 +85,6 @@ int main (int argc, char *argv[])
 //  }
 
 
-//  printf("shell_terminal: %d\n", shell_terminal);
-//  printf("shell_is_interactive: %d\n", shell_is_interactive);
   /* shell initialization */
   if (signal(SIGINT, sig) == SIG_ERR) PrintPError("SIGINT");
   if (signal(SIGTSTP, sig) == SIG_ERR) PrintPError("SIGTSTP");
@@ -129,7 +105,6 @@ int main (int argc, char *argv[])
   tcsetpgrp(shell_terminal, shell_pgid);
   tcgetattr(shell_terminal, &shell_tmodes);
   
-//  printf("shell_termnial now is: %d, the shell_pgid is: %d\n", shell_terminal, shell_pgid); 
 
   while (!forceExit) /* repeat forever */
   {
@@ -143,8 +118,6 @@ int main (int argc, char *argv[])
     else
       getCommandLine(&cmdLine, BUFSIZE);
 
-//    printf("========================================\n");
-//    printf("input: %s\n", cmdLine);
     if(strcmp(cmdLine, "exit") == 0)
     {
       forceExit=TRUE;
@@ -171,36 +144,7 @@ int main (int argc, char *argv[])
 
 static void sig(int signo)
 {
-/*  if(signo == SIGINT) {
-//    if(bgjobs != NULL) {
-//      bgjobL *j;
-//      j = bgjobs;
-//      while((j != NULL) && (j->backg == 1)) {
-//        j = j->next;
-//      }
-//      if(j->pgid > 0 && j!= NULL && j->backg == 0)
-//        kill(-j->pgid, SIGINT);
-    }
-  }
 
-
-  if(signo == SIGTSTP) {
-//    printf("recieved IGTSTP\n");
-//    fflush(stdout);
-//        if(fgjob != NULL) {
-//        kill(fgjob->pgid, SIGTSTP);
-//        format_job_infor(fgjob, "Stopped");
-//        RunCmdBg(fgjob, 0);
-      }
-    }
-      
-  
-  if(signo == SIGCHLD) {
-//    int status;
-//    pid_t pid;
-//    while((pid = waitpid(-1, &status, WNOHANG)) > 0) {
-//    }
-    }*/
     if (signo == SIGINT)
       {
 

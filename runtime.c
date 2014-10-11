@@ -91,13 +91,6 @@ void RunCmd(commandT** cmd, int n)
 {
   int i;
   total_task = n;
-//  if(n == 1)
-//    RunCmdFork(cmd[0], TRUE);
-//  else{
-//    RunCmdPipe(cmd[0], cmd[1]);
-//    for(i = 0; i < n; i++)
-//      ReleaseCmdT(&cmd[i]);
-//  }
   bgjobL *job = NULL;
   procesS *pl = NULL;
 
@@ -106,30 +99,35 @@ void RunCmd(commandT** cmd, int n)
 
   job->first_process = pl;
 
-//  dup2( STDIN_FILENO, job->stdin);
-//  dup2(STDOUT_FILENO, job->stdout);
-//  dup2(STDERR_FILENO, job->stderr);
+  job->stdin = STDIN_FILENO;
+  job->stdout = STDOUT_FILENO;
+  job->stderr = STDERR_FILENO;
 
 
   if(n == 1) {
     job->cmdline = strdup(cmd[0]->cmdline);
     pl->command = cmd[0];
-//    RunCmdFork(job, TRUE);
   }
   else {
+    
+    procesS *pp=NULL;
+    job->cmdline = strdup(cmd[0]->cmdline);
+    pl->command = cmd[0];
+    pp = pl;
     i = 1;
-    while(cmd[i] != NULL) {
+    while(i<n) {
       procesS *p = NULL;
       p = malloc(sizeof(procesS));
       p->command = cmd[i];
-      pl->next = p;
+      if(p->command == NULL) break;
+      pp->next = p;
 
-      printf("pipeline mode enable\n");
-      pl = p;
+      pp = p;
       i++;
     }
-//    RunCmdFork(job, TRUE);
+    pp = NULL;
   }
+  
 
   RunCmdFork(job, TRUE);
 
@@ -157,8 +155,6 @@ void RunCmdFork(bgjobL *job, bool fork)
 void RunCmdFg(bgjobL *job, int cont)
 {
   int status;
-//  if(fgjob != NULL) RunCmdBg(fgjob, 0);
-//  fgjob = job;
   
   if(fgjob == NULL) fgjob = job;
 
@@ -224,6 +220,11 @@ static void RunExternalCmd(bgjobL *job, bool fork)
   p = job->first_process;
   
   if (ResolveExternalCmd(p->command)){
+    p = p->next;
+    while(p != NULL) {
+      ResolveExternalCmd(p->command);
+      p = p->next;
+    }
     Exec(job, fork);
   }
   else {
@@ -287,11 +288,10 @@ static void Exec(bgjobL *job, bool forceFork)
   int status;
 
   job->backg = bg;
-  pid_t pid;               // pid1 is parent pid.
+  pid_t pid;               
   int mypipe[2], infile, outfile;
 
   infile = job->stdin;
-//  p = job->first_process;
 
   while(p != NULL) {
     if(p->next) {
@@ -312,7 +312,6 @@ static void Exec(bgjobL *job, bool forceFork)
       fprintf(stderr, "Fork Failed");
     }
     else if(pid == 0) {   // Child process
-  //    execv(cmd->name, cmd->argv);
         launch_process(p, job->pgid, infile, outfile, job->stderr);    
     }
     else {
@@ -338,7 +337,6 @@ static void Exec(bgjobL *job, bool forceFork)
   if(bg)
     RunCmdBg(job, 0);
   else {
-//    wait(NULL);
     RunCmdFg(job, 0);
   }
 }
@@ -433,8 +431,6 @@ static void RunBuiltInCmd(commandT* cmd)
         if(i == 50) break;
       }
     }
-//    printf("jlast: %x\n", jlast);
-//    fflush(stdout);
     if(jlast)
       jlast->next = j->next;
     else
@@ -460,19 +456,15 @@ void CheckJobs()
 {
   fflush(stdout);
   bgjobL *j, *jlast, *jnext;
-//  procesS *p;
   
   update_status();
 
   j = bgjobs;
   jlast = NULL;
   while(j != NULL) {
-//    printf("j->cmdline: %s\n", j->cmdline);
     jnext = j->next;
-//    printf("loop**** j => 0x%08x\n", j);
 
     if(job_is_completed(j)) {
-//      printf("HEHE\n");
       fflush(stdout);
       format_job_infor(j, "Done");
       if(jlast)
@@ -482,10 +474,6 @@ void CheckJobs()
       free_job(&j);
     }
 
-//    else if(job_is_stopped (j)) {
-//      format_job_infor(j, "Stopped");
-//      jlast = j;
-//    }
     
     
     else {
@@ -544,8 +532,7 @@ void launch_process(procesS *p, pid_t pgid, int infile, int outfile, int errfile
     signal(SIGTTOU, SIG_DFL);
     signal(SIGCHLD, SIG_DFL);
   }
-//  printf("cmd->name: %s\n", cmd->name);
-/*
+
   if(infile != STDIN_FILENO) {
     dup2(infile, STDIN_FILENO);
     close(infile);
@@ -558,8 +545,8 @@ void launch_process(procesS *p, pid_t pgid, int infile, int outfile, int errfile
     dup2(errfile, STDERR_FILENO);
     close(errfile);
   }
-*/
-//  printf("cmd->name: %s, cmd->argv: %s\n", cmd->name, *(cmd->argv));
+
+
   execv(p->command->name, p->command->argv);
   perror("execv");
   exit(1);
@@ -603,7 +590,6 @@ int mark_process_status (pid_t pid, int status)
       }
       j = j->next;
     }
-//    fprintf(stderr, "No child process %d.\n", pid);
     return 1;
   }
   else if(pid == 0||errno == ECHILD)
@@ -647,7 +633,7 @@ void append(bgjobL **headRef, bgjobL *job) {
   else {
     i=2;
     while(current->next != NULL) {
-      if(job->jobid > 0 ) {     //TODO probably bug here.
+      if(job->jobid > 0 ) {     
         i = current->jobid + 1;
       }
       current = current->next;
@@ -718,16 +704,7 @@ void format_job_infor(bgjobL *j, const char *status) {
 }
 
 void free_job(bgjobL **j) {
-//  printf("free_job => 0x%08x\n", *j);
   if((*j)==bgjobs) bgjobs = NULL;
-//  if((*j)->cmdline != NULL) free((*j)->cmdline);  //TODO probably has seg fault. to delete
-//  if((*j)->first_process != NULL) {
-//    if((*j)->first_process->command != NULL) {
-//      ReleaseCmdT(&((*j)->first_process->command));
-//    }
-//    free((*j)->first_process);
-//  }
- // if((*j)->next != NULL) free((*j)->next);
   free(*j);
 }
 
@@ -750,7 +727,6 @@ void continue_job( bgjobL *j, int foreground) {
   else {
     cont = 0;
   }
-//  printf("job: %s mark cont as %d\n", j->cmdline, cont);
   fflush(stdout);
   if(foreground==1){
     

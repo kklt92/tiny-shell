@@ -52,6 +52,11 @@ test-reg: handin
 	cd testsuite;\
 	bash ./run_testcase.sh $${HANDIN} ${SHELL_ARCH};
 
+test-reg-pipe: handin
+	HANDIN=`pwd`/${TEAM}-${VERSION}-${PROJ}.tar.gz;\
+	cd testsuite;\
+	bash ./run_testcase_pipe.sh $${HANDIN} ${SHELL_ARCH};
+
 start-vm:
 	VBoxManage startvm ${VM_NAME} --type headless
 
