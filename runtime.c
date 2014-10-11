@@ -287,7 +287,7 @@ static void Exec(bgjobL *job, bool forceFork)
   int status;
 
   job->backg = bg;
-  pid_t pid,pid1;               // pid1 is parent pid.
+  pid_t pid;               // pid1 is parent pid.
   int mypipe[2], infile, outfile;
 
   infile = job->stdin;
@@ -304,7 +304,7 @@ static void Exec(bgjobL *job, bool forceFork)
     else {
       outfile = job->stdout;
     }
-    pid1 = getpid();
+//    pid1 = getpid();
     pid = fork();
 
 
@@ -334,6 +334,7 @@ static void Exec(bgjobL *job, bool forceFork)
 
   if(!shell_is_interactive)
     status = wait_for_job(job);
+  if(status);
   if(bg)
     RunCmdBg(job, 0);
   else {
@@ -418,7 +419,7 @@ static void RunBuiltInCmd(commandT* cmd)
     }
   }
   else if(strcmp(cmd->argv[0], "fg") == 0) {
-    bgjobL *j, *jlast, *jnext ;
+    bgjobL *j, *jlast;
     j = bgjobs;
     int i = 0;
     jlast = NULL;
@@ -443,10 +444,12 @@ static void RunBuiltInCmd(commandT* cmd)
   else if(strcmp(cmd->argv[0], "cd") == 0) {
     if(cmd->argv[1] != NULL) {
       
-      chdir(cmd->argv[1]);
+      if(chdir(cmd->argv[1]))
+        perror("CHDIR");
     }
     else {
-      chdir(getenv("HOME"));
+      if(chdir(getenv("HOME")))
+        perror("CHDIR");
     }
   }
 }
@@ -457,7 +460,7 @@ void CheckJobs()
 {
   fflush(stdout);
   bgjobL *j, *jlast, *jnext;
-  procesS *p;
+//  procesS *p;
   
   update_status();
 
@@ -611,7 +614,7 @@ int mark_process_status (pid_t pid, int status)
   }
 }
 
-void update_status(void) {
+void update_status() {
   int status;
   pid_t pid;
 
@@ -644,7 +647,7 @@ void append(bgjobL **headRef, bgjobL *job) {
   else {
     i=2;
     while(current->next != NULL) {
-      if(job->jobid != NULL) {
+      if(job->jobid > 0 ) {     //TODO probably bug here.
         i = current->jobid + 1;
       }
       current = current->next;
@@ -740,7 +743,7 @@ void mark_job_as_running(bgjobL *j) {
 
 void continue_job( bgjobL *j, int foreground) {
   int cont;
-  if(job_is_stopped){
+  if(job_is_stopped(j)){
     mark_job_as_running(j);
     cont = 1;
   }

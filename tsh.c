@@ -161,7 +161,6 @@ int main (int argc, char *argv[])
 
 //    printf("%s\n", cmdLine);
     
-    *cmdLine = NULL;
     i++;
   }
 

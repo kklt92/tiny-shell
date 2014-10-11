@@ -51,6 +51,12 @@ extern int shell_terminal;
 extern int shell_is_interactive;
 /***********Function Prototypes******************************************/
 
+void initial_signal();
+
+void signal_mask();
+
+void reset_signal_mask();
+
 /************External Declaration*****************************************/
 
 /**************Definition***************************************************/

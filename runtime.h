@@ -201,6 +201,26 @@ EXTERN void CheckJobs();
 EXTERN int wait_for_job(bgjobL*);
 
 EXTERN void format_job_infor(bgjobL*, const char*);
+
+EXTERN void mark_job_as_stopped(bgjobL*);
+
+void append(bgjobL**, bgjobL*);
+
+void launch_process(procesS*, pid_t, int, int, int);
+
+void continue_job(bgjobL*, int);
+
+int job_is_stopped(bgjobL*);
+
+int job_is_completed(bgjobL*);
+
+void update_status();
+
+void free_job(bgjobL**);
+
+int mark_process_status(pid_t, int);
+
+
 /************External Declaration*****************************************/
 
 /**************Definition***************************************************/
